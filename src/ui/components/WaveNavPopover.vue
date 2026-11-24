@@ -2,7 +2,6 @@
   <Teleport to="body">
     <div
       v-if="visible"
-      ref="popoverRef"
       class="wave-nav-popover"
       :style="style"
       @mouseenter="onEnter"
@@ -14,40 +13,54 @@
 </template>
 
 <script setup>
-  import { computed, ref } from "vue";
+  import { computed } from "vue";
 
   const props = defineProps({
     visible: { type: Boolean, default: false },
-    /** 锚点屏幕坐标（视口坐标） */
     anchorX: { type: Number, default: 0 },
     anchorY: { type: Number, default: 0 },
-    /** popover 自身宽度，用于左右翻转判断 */
+    /** popover 相对锚点的展开方向：'left' | 'right' | 'top' | 'bottom' */
+    placement: {
+      type: String,
+      default: "right",
+      validator: v => ["left", "right", "top", "bottom"].includes(v),
+    },
     width: { type: Number, default: 260 },
-    /** 与锚点的间距 */
-    offset: { type: Number, default: 48 },
-    /** 视口边缘安全距离 */
-    edge: { type: Number, default: 8 },
+    offset: { type: Number, default: 12 },
   });
 
   const emit = defineEmits(["enter", "leave"]);
 
-  const popoverRef = ref(null);
-
-  /** 左侧空间够就往左展开，否则往右 */
-  const placement = computed(() => {
-    const leftSpace = props.anchorX - props.offset - props.width;
-    return leftSpace >= props.edge ? "left" : "right";
-  });
-
   const style = computed(() => {
-    const isLeft = placement.value === "left";
-    const x = isLeft ? props.anchorX - props.offset : props.anchorX + props.offset;
+    let left = props.anchorX;
+    let top = props.anchorY;
+    let transform = "translate(0, 0)";
+
+    switch (props.placement) {
+      case "right":
+        left = props.anchorX + props.offset;
+        transform = "translate(0, -50%)";
+        break;
+      case "left":
+        left = props.anchorX - props.offset;
+        transform = "translate(-100%, -50%)";
+        break;
+      case "bottom":
+        top = props.anchorY + props.offset;
+        transform = "translate(-50%, 0)";
+        break;
+      case "top":
+        top = props.anchorY - props.offset;
+        transform = "translate(-50%, -100%)";
+        break;
+    }
+
     return {
       position: "fixed",
-      top: `${props.anchorY}px`,
-      left: `${x}px`,
+      top: `${top}px`,
+      left: `${left}px`,
       width: `${props.width}px`,
-      transform: isLeft ? "translate(-100%, -50%)" : "translate(0, -50%)",
+      transform,
     };
   });
 
@@ -57,8 +70,6 @@
   function onLeave() {
     emit("leave");
   }
-
-  defineExpose({ popoverRef });
 </script>
 
 <style>

@@ -26,5 +26,8 @@ export default defineConfig({
     port: 5178,
     strictPort: true,
     hmr: { host: "localhost" }, // 明确 HMR WebSocket 地址，避免 Electron 内网 IP 解析问题
+    watch: {
+        ignored: ['**/node_modules/**', '**/dist/**', '**/.git/**']
+    },
   },
 });

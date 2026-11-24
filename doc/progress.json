@@ -1,0 +1,65 @@
+{
+  "updatedAt": "2026-11-21T13:46:15.330Z",
+  "batches": [
+    {
+      "id": "B0",
+      "state": "done",
+      "files": {}
+    },
+    {
+      "id": "B1",
+      "state": "done",
+      "files": {}
+    },
+    {
+      "id": "B2",
+      "state": "done",
+      "files": {}
+    },
+    {
+      "id": "B3",
+      "state": "done",
+      "files": {}
+    },
+    {
+      "id": "B4",
+      "state": "done",
+      "files": {}
+    },
+    {
+      "id": "B5",
+      "state": "done",
+      "files": {}
+    },
+    {
+      "id": "B6",
+      "state": "done",
+      "files": {}
+    },
+    {
+      "id": "B7",
+      "state": "done",
+      "files": {}
+    },
+    {
+      "id": "B8a",
+      "state": "done",
+      "files": {}
+    },
+    {
+      "id": "B8b",
+      "state": "done",
+      "files": {}
+    },
+    {
+      "id": "B9a",
+      "state": "done",
+      "files": {}
+    },
+    {
+      "id": "B9b",
+      "state": "done",
+      "files": {}
+    }
+  ]
+}

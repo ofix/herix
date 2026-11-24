@@ -1,0 +1,460 @@
+{
+  "schemaVersion": "1",
+  "files": [
+    {
+      "path": "src/main/core/task-machine.js",
+      "batch": "B5",
+      "layer": "core",
+      "kind": "class",
+      "exportName": "TaskMachine",
+      "classDoc": "任务状态机：唯一允许的状态转移权威。纯函数，无 I/O、无时钟、无随机。",
+      "imports": [
+        {
+          "from": "../../libs/contracts/index.js",
+          "names": [
+            "TASK_STATE",
+            "TASK_TERMINAL"
+          ]
+        },
+        {
+          "from": "../../libs/contracts/index.js",
+          "names": [
+            "TaskState",
+            "TaskEvent",
+            "CallCtx",
+            "Transition"
+          ],
+          "as": "type"
+        },
+        {
+          "from": "../../libs/utils/result.js",
+          "names": [
+            "ok",
+            "err"
+          ]
+        },
+        {
+          "from": "../../libs/utils/result.js",
+          "names": [
+            "Result"
+          ],
+          "as": "genericType"
+        }
+      ],
+      "members": [
+        {
+          "kind": "method",
+          "name": "initial",
+          "static": true,
+          "params": [],
+          "returns": {
+            "type": "TaskState",
+            "desc": "固定为 queued"
+          },
+          "invariants": [
+            "无副作用",
+            "同一版本永远返回同一值"
+          ]
+        },
+        {
+          "kind": "method",
+          "name": "apply",
+          "static": true,
+          "params": [
+            {
+              "name": "ctx",
+              "type": "CallCtx",
+              "desc": "调用上下文，traceId 必填"
+            },
+            {
+              "name": "state",
+              "type": "TaskState",
+              "desc": "当前状态"
+            },
+            {
+              "name": "event",
+              "type": "TaskEvent",
+              "desc": "转移事件"
+            }
+          ],
+          "returns": {
+            "type": "Result<TaskState>",
+            "desc": "下一状态；非法转移返回 err"
+          },
+          "throwsCodes": [
+            "E_VALIDATION"
+          ],
+          "invariants": [
+            "非法转移必须返回 err 而不是抛异常",
+            "不得读取 Date.now / Math.random"
+          ]
+        },
+        {
+          "kind": "method",
+          "name": "isTerminal",
+          "static": true,
+          "params": [
+            {
+              "name": "state",
+              "type": "TaskState"
+            }
+          ],
+          "returns": {
+            "type": "boolean"
+          }
+        },
+        {
+          "kind": "method",
+          "name": "transitions",
+          "static": true,
+          "params": [],
+          "returns": {
+            "type": "ReadonlyArray<Transition>",
+            "desc": "全量转移表，供 UI 与单测遍历"
+          }
+        }
+      ]
+    },
+    {
+      "path": "src/main/core/state/state-store.js",
+      "batch": "B5",
+      "layer": "state",
+      "kind": "class",
+      "exportName": "StateStore",
+      "classDoc": "唯一持有可变状态的类。所有写操作以事件形式提交，经 repositories 落到 storage。",
+      "imports": [
+        {
+          "from": "../../../libs/contracts/index.js",
+          "names": [
+            "StateSlice",
+            "DomainEvent",
+            "CallCtx"
+          ],
+          "as": "type"
+        },
+        {
+          "from": "../../../libs/utils/result.js",
+          "names": [
+            "ok",
+            "err"
+          ]
+        },
+        {
+          "from": "../../../libs/utils/result.js",
+          "names": [
+            "Result"
+          ],
+          "as": "genericType"
+        }
+      ],
+      "members": [
+        {
+          "kind": "method",
+          "name": "hydrate",
+          "params": [
+            {
+              "name": "ctx",
+              "type": "CallCtx"
+            }
+          ],
+          "returns": {
+            "type": "Result<{ restored:number, corrupted:string[] }>",
+            "desc": "从 state/*.json 恢复"
+          },
+          "throwsCodes": [
+            "E_STORE_IO"
+          ]
+        },
+        {
+          "kind": "method",
+          "name": "get",
+          "params": [
+            {
+              "name": "slice",
+              "type": "StateSlice"
+            }
+          ],
+          "returns": {
+            "type": "unknown",
+            "desc": "只读快照（冻结对象）"
+          },
+          "invariants": [
+            "返回值为 frozen，调用方无法就地修改"
+          ]
+        },
+        {
+          "kind": "method",
+          "name": "commit",
+          "async": true,
+          "params": [
+            {
+              "name": "ctx",
+              "type": "CallCtx"
+            },
+            {
+              "name": "event",
+              "type": "DomainEvent",
+              "desc": "唯一的写入口"
+            }
+          ],
+          "returns": {
+            "type": "Result<{ version:number }>",
+            "desc": "提交后的状态版本号"
+          },
+          "throwsCodes": [
+            "E_VALIDATION",
+            "E_STORE_IO"
+          ],
+          "invariants": [
+            "先 zod 校验事件",
+            "按 slice 串行化，禁止并发写同一切片"
+          ]
+        },
+        {
+          "kind": "method",
+          "name": "subscribe",
+          "params": [
+            {
+              "name": "slice",
+              "type": "StateSlice"
+            },
+            {
+              "name": "fn",
+              "type": "Function"
+            }
+          ],
+          "returns": {
+            "type": "Function",
+            "desc": "unsubscribe"
+          }
+        }
+      ]
+    },
+    {
+      "path": "src/main/core/state/repositories/task.js",
+      "batch": "B5",
+      "layer": "state",
+      "kind": "class",
+      "exportName": "TaskRepository",
+      "classDoc": "task 切片的持久化映射：只做 load/save，不含业务判断。",
+      "imports": [
+        {
+          "from": "../../../../libs/contracts/index.js",
+          "names": [
+            "FileStorePort",
+            "TaskRecord"
+          ],
+          "as": "type"
+        },
+        {
+          "from": "../../../../libs/utils/result.js",
+          "names": [
+            "ok",
+            "err"
+          ]
+        },
+        {
+          "from": "../../../../libs/utils/result.js",
+          "names": [
+            "Result"
+          ],
+          "as": "genericType"
+        }
+      ],
+      "members": [
+        {
+          "kind": "method",
+          "name": "load",
+          "async": true,
+          "params": [
+            {
+              "name": "fileStore",
+              "type": "FileStorePort"
+            }
+          ],
+          "returns": {
+            "type": "Result<Map<string, TaskRecord>>"
+          },
+          "throwsCodes": [
+            "E_STORE_IO"
+          ]
+        },
+        {
+          "kind": "method",
+          "name": "save",
+          "async": true,
+          "params": [
+            {
+              "name": "fileStore",
+              "type": "FileStorePort"
+            },
+            {
+              "name": "records",
+              "type": "Map<string, TaskRecord>"
+            }
+          ],
+          "returns": {
+            "type": "Result<void>"
+          },
+          "throwsCodes": [
+            "E_STORE_IO"
+          ],
+          "invariants": [
+            "原子写：临时文件 + rename",
+            "失败必须保留旧文件"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/main/core/registry/config-resolver.js",
+      "batch": "B5",
+      "layer": "registry",
+      "kind": "class",
+      "exportName": "ConfigResolver",
+      "classDoc": "资源解析：默认 resources → userData 覆盖 → zod 校验 → 失败回退默认并记审计。",
+      "imports": [
+        {
+          "from": "../../../libs/contracts/index.js",
+          "names": [
+            "CallCtx"
+          ],
+          "as": "type"
+        },
+        {
+          "from": "../../../libs/utils/result.js",
+          "names": [
+            "ok",
+            "err"
+          ]
+        },
+        {
+          "from": "../../../libs/utils/result.js",
+          "names": [
+            "Result"
+          ],
+          "as": "genericType"
+        }
+      ],
+      "members": [
+        {
+          "kind": "method",
+          "name": "load",
+          "async": true,
+          "params": [
+            {
+              "name": "kind",
+              "type": "'skills'|'sites'"
+            },
+            {
+              "name": "ctx",
+              "type": "CallCtx"
+            }
+          ],
+          "returns": {
+            "type": "Result<{ items:Array<object>, sources:Array<string>, rejected:Array<string> }>"
+          },
+          "throwsCodes": [
+            "E_VALIDATION"
+          ],
+          "invariants": [
+            "整文件替换，不做字段合并",
+            "单个文件失败不影响其他文件"
+          ]
+        },
+        {
+          "kind": "method",
+          "name": "watch",
+          "params": [
+            {
+              "name": "onChange",
+              "type": "Function"
+            },
+            {
+              "name": "ctx",
+              "type": "CallCtx"
+            }
+          ],
+          "returns": {
+            "type": "Function",
+            "desc": "unwatch"
+          },
+          "invariants": [
+            "热加载失败不得中断在跑任务"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/main/core/registry/skill-registry.js",
+      "batch": "B5",
+      "layer": "registry",
+      "kind": "class",
+      "exportName": "SkillRegistry",
+      "classDoc": "SKILL 注册表：只读索引 + 角色匹配，数据来自 ConfigResolver。",
+      "imports": [
+        {
+          "from": "../../../libs/contracts/index.js",
+          "names": [
+            "SkillMeta"
+          ],
+          "as": "type"
+        },
+        {
+          "from": "../../../libs/utils/result.js",
+          "names": [
+            "Result"
+          ],
+          "as": "genericType"
+        }
+      ],
+      "members": [
+        {
+          "kind": "method",
+          "name": "loadAll",
+          "params": [
+            {
+              "name": "items",
+              "type": "ReadonlyArray<SkillMeta>"
+            }
+          ],
+          "returns": {
+            "type": "Result<{ accepted:number, rejected:Array<string> }>"
+          },
+          "throwsCodes": [
+            "E_VALIDATION"
+          ]
+        },
+        {
+          "kind": "method",
+          "name": "get",
+          "params": [
+            {
+              "name": "skillId",
+              "type": "string"
+            }
+          ],
+          "returns": {
+            "type": "Result<SkillMeta>"
+          },
+          "throwsCodes": [
+            "E_VALIDATION"
+          ]
+        },
+        {
+          "kind": "method",
+          "name": "listByRole",
+          "params": [
+            {
+              "name": "role",
+              "type": "string"
+            }
+          ],
+          "returns": {
+            "type": "ReadonlyArray<SkillMeta>"
+          }
+        }
+      ]
+    }
+  ]
+}

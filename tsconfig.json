@@ -1,0 +1,31 @@
+{
+    "compilerOptions": {
+        "target": "es2022",
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "allowJs": true,
+        "checkJs": false,
+        "noEmit": true,
+        "strict": true,
+        "noImplicitAny": false,
+        "skipLibCheck": true,
+        "resolveJsonModule": true,
+        "forceConsistentCasingInFileNames": true,
+        "types": [
+            "node"
+        ],
+        "lib": [
+            "es2022",
+            "dom"
+        ]
+    },
+    "include": [
+        "src/**/*.js",
+        "scripts/**/*.mjs",
+        "test/**/*.js"
+    ],
+    "exclude": [
+        "node_modules",
+        "src/renderer/**"
+    ]
+}
